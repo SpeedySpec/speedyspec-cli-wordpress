@@ -1,0 +1,34 @@
+{
+    "name": "speedyspec/cli-wordpress",
+    "description": "The speedyspec CLI plugin for WordPress: installs it, writes wp-config.php and manages its plugin and theme files",
+    "type": "library",
+    "license": "BSD-3-Clause",
+    "require": {
+        "php": ">=8.4"
+    },
+    "require-dev": {
+        "pestphp/pest": "^3.0|^4.0",
+        "speedyspec/cli-contracts": "*"
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../speedyspec-cli-contracts",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
+    "autoload-dev": {
+        "psr-4": {
+            "SpeedySpec\\CliWordPress\\": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
+}
