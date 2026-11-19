@@ -92,6 +92,10 @@ moved="$(cli app db query --install moved "SELECT option_value FROM site_options
 case "$moved" in *http://new.e2e.test*) ;; *) fail "the moved site's URL is: $moved" ;; esac
 [ -n "$(cli app db query --install moved "SELECT option_name FROM site_options WHERE option_name = 'site_user_roles'" | tail -n +2)" ] \
     || fail "the prefixed option was not renamed"
+widget="$(cli app db query --install moved "SELECT option_value FROM site_options WHERE option_name = 'widget'" | tail -n +2)"
+php -r 'exit(@unserialize($argv[1]) === ["url" => "http://new.e2e.test/x"] ? 0 : 1);' "$widget" \
+    || fail "the moved widget is not valid serialized data with the new URL: $widget"
+grep -q "e2e_moved" "$work/moved/wp-config.php" || fail "the moved site's wp-config.php is not its own"
 ok "restore to another URL and prefix"
 
 echo "all passed; the site was at $work/site (removed on exit): point php-fpm at a copy to finish in the browser"
