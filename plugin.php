@@ -19,6 +19,7 @@ use SpeedySpec\Cli\Contracts\InstallRequest;
 use SpeedySpec\Cli\Contracts\PrefixedColumn;
 use SpeedySpec\Cli\Contracts\SetupPlan;
 use SpeedySpec\Cli\Contracts\SiteUrl;
+use SpeedySpec\Cli\Contracts\TableColumn;
 use SpeedySpec\Cli\Contracts\ZipSource;
 use SpeedySpec\CliWordPress\Layout;
 use SpeedySpec\CliWordPress\Version;
@@ -119,5 +120,7 @@ Hook::add('speedyspec_app_backup', static function (?BackupSpec $spec, Install $
         new SiteUrl('options', 'option_name', 'siteurl', 'option_value'),
         [new PrefixedColumn('options', 'option_name', ['user_roles']), new PrefixedColumn('usermeta', 'meta_key')],
         $install->root === null ? null : Version::of($install->root),
+        // A post's GUID identifies it to feed readers; WordPress says never to change it.
+        [new TableColumn('posts', 'guid')],
     );
 }, 10, 2);
