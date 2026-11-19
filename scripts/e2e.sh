@@ -75,6 +75,8 @@ ok "plugins and themes from wordpress.org"
 # options table with its URL and a serialized value that holds it.
 cli app db query --install e2e "CREATE TABLE wp_options (option_name varchar(191) PRIMARY KEY, option_value longtext)" >/dev/null
 cli app db query --install e2e "INSERT INTO wp_options VALUES ('siteurl','http://old.e2e.test'),('widget','a:1:{s:3:\"url\";s:21:\"http://old.e2e.test/x\";}'),('wp_user_roles','a:0:{}')" >/dev/null
+cli app db query --install e2e "CREATE TABLE wp_posts (ID bigint PRIMARY KEY, guid varchar(255), post_content longtext)" >/dev/null
+cli app db query --install e2e "INSERT INTO wp_posts VALUES (1,'http://old.e2e.test/?p=1','see http://old.e2e.test/x')" >/dev/null
 archive="$(cli app backup --install e2e)" || fail "app backup"
 cli app db query --install e2e "DELETE FROM wp_options WHERE option_name = 'widget'" >/dev/null
 cli app restore "$archive" --install e2e --yes || fail "same-site restore"
@@ -95,6 +97,8 @@ case "$moved" in *http://new.e2e.test*) ;; *) fail "the moved site's URL is: $mo
 widget="$(cli app db query --install moved "SELECT option_value FROM site_options WHERE option_name = 'widget'" | tail -n +2)"
 php -r 'exit(@unserialize($argv[1]) === ["url" => "http://new.e2e.test/x"] ? 0 : 1);' "$widget" \
     || fail "the moved widget is not valid serialized data with the new URL: $widget"
+post="$(cli app db query --install moved "SELECT guid, post_content FROM site_posts WHERE ID = 1" | tail -n +2)"
+case "$post" in *http://old.e2e.test/?p=1*http://new.e2e.test/x*) ;; *) fail "the moved post should keep its GUID and move its content: $post" ;; esac
 grep -q "e2e_moved" "$work/moved/wp-config.php" || fail "the moved site's wp-config.php is not its own"
 ok "restore to another URL and prefix"
 
