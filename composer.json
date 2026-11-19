@@ -8,17 +8,8 @@
     },
     "require-dev": {
         "pestphp/pest": "^3.0|^4.0",
-        "speedyspec/cli-contracts": "*"
+        "speedyspec/cli-contracts": "^1.3"
     },
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../speedyspec-cli-contracts",
-            "options": {
-                "symlink": true
-            }
-        }
-    ],
     "autoload-dev": {
         "psr-4": {
             "SpeedySpec\\CliWordPress\\": "src/"
