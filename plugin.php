@@ -101,8 +101,9 @@ Hook::add('speedyspec_app_extensions', static function (?ExtensionLayout $layout
 
 /*
  * What a backup of WordPress holds: the whole install except its caches, `wp-config.php` kept from the target on
- * restore (it names the target's own database), the site URL in the `siteurl` option, and the option and user meta
- * keys that carry the table prefix (`wp_user_roles`, `wp_capabilities`).
+ * restore (it names the target's own database), the site URL in the `siteurl` option, and the keys built from the
+ * table prefix: the `wp_user_roles` option (only that one: other options such as `wp_page_for_privacy_policy` only
+ * start with the same letters) and every prefixed user meta key (`wp_capabilities`).
  */
 Hook::add('speedyspec_app_backup', static function (?BackupSpec $spec, Install $install): ?BackupSpec
 {
@@ -116,7 +117,7 @@ Hook::add('speedyspec_app_backup', static function (?BackupSpec $spec, Install $
         ['wp-content/cache', 'wp-content/upgrade', '.maintenance'],
         ['wp-config.php'],
         new SiteUrl('options', 'option_name', 'siteurl', 'option_value'),
-        [new PrefixedColumn('options', 'option_name'), new PrefixedColumn('usermeta', 'meta_key')],
+        [new PrefixedColumn('options', 'option_name', ['user_roles']), new PrefixedColumn('usermeta', 'meta_key')],
         $install->root === null ? null : Version::of($install->root),
     );
 }, 10, 2);
