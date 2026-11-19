@@ -12,7 +12,7 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cli_repo="${SPEEDYSPEC_CLI_REPO:-$here/../speedyspec-cli}"
-source_plugin="${SPEEDYSPEC_WORDPRESS_ORG_PLUGIN:-$here/../speedyspec-cli-wordpress-org}"
+source_checkout="${SPEEDYSPEC_WORDPRESS_ORG_PLUGIN:-$here/../speedyspec-cli-wordpress-org}"
 bin="${SPEEDYSPEC_BIN:?set SPEEDYSPEC_BIN to a speedyspec binary}"
 version="${WORDPRESS_VERSION:-7.1.5}"
 work="$(mktemp -d)"
@@ -42,6 +42,11 @@ web="$(php -r '$s = stream_socket_server("tcp://127.0.0.1:0"); echo explode(":",
 php -S "127.0.0.1:$web" -t "$work/serve" >/dev/null 2>&1 &
 server=$!
 sleep 0.5
+
+# A copy of the source plugin, so installing its packages leaves the checkout's own vendor/ alone.
+source_plugin="$work/wordpress-org"
+mkdir -p "$source_plugin"
+(cd "$source_checkout" && tar --exclude ./vendor -cf - .) | (cd "$source_plugin" && tar -xf -)
 
 export SPEEDYSPEC_HOME="$work/home"
 export SPEEDYSPEC_WORDPRESS_DOWNLOADS="http://127.0.0.1:$web"

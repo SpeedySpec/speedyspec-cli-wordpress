@@ -26,7 +26,9 @@ return static function (array $input): string
         throw new RuntimeException('the install has no wp-config-sample.php to start from');
     }
     $text = \SpeedySpec\CliWordPress\ConfigFile::render($sample, $input, \SpeedySpec\CliWordPress\ConfigFile::salts());
-    $temporary = $root . '/.wp-config.php.speedyspec-' . bin2hex(random_bytes(6));
+    // Ends in .php: a copy left behind by a crash holds the password, and the web server runs it (printing
+    // nothing) rather than serving it as text.
+    $temporary = $root . '/.wp-config.speedyspec-' . bin2hex(random_bytes(6)) . '.php';
     if (@file_put_contents($temporary, $text) === false)
     {
         throw new RuntimeException(sprintf('cannot write in %s', $root));
