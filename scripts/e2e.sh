@@ -29,7 +29,7 @@ eval "$("$cli_repo/scripts/mysql.sh" env)"
 url="${SPEEDYSPEC_E2E_MYSQL:?scripts/mysql.sh up has not been run}"
 password="$(printf '%s' "$url" | sed -E 's|mysql://root:([^@]*)@.*|\1|')"
 port="$(printf '%s' "$url" | sed -E 's|.*:([0-9]+)$|\1|')"
-docker exec speedyspec-mysql mysql -uroot -p"$password" -e 'DROP DATABASE IF EXISTS e2e_wordpress; CREATE DATABASE e2e_wordpress' 2>/dev/null \
+docker exec speedyspec-mysql mysql -uroot -p"$password" -e 'DROP DATABASE IF EXISTS e2e_wordpress; DROP DATABASE IF EXISTS e2e_moved; CREATE DATABASE e2e_wordpress' 2>/dev/null \
     || fail "could not create the e2e database in speedyspec-mysql"
 
 # The pinned release, checked against its published sha1, then served locally as latest.zip.
@@ -70,5 +70,28 @@ cli theme install astra --install e2e || fail "theme install astra"
 cli theme list --install e2e
 cli plugin delete hello-dolly --yes --install e2e || fail "plugin delete"
 ok "plugins and themes from wordpress.org"
+
+# Backup and restore. WordPress's own installer has not run, so there are no tables yet: give the site a minimal
+# options table with its URL and a serialized value that holds it.
+cli app db query --install e2e "CREATE TABLE wp_options (option_name varchar(191) PRIMARY KEY, option_value longtext)" >/dev/null
+cli app db query --install e2e "INSERT INTO wp_options VALUES ('siteurl','http://old.e2e.test'),('widget','a:1:{s:3:\"url\";s:21:\"http://old.e2e.test/x\";}'),('wp_user_roles','a:0:{}')" >/dev/null
+archive="$(cli app backup --install e2e)" || fail "app backup"
+cli app db query --install e2e "DELETE FROM wp_options WHERE option_name = 'widget'" >/dev/null
+cli app restore "$archive" --install e2e --yes || fail "same-site restore"
+[ -n "$(cli app db query --install e2e "SELECT option_value FROM wp_options WHERE option_name = 'widget'" | tail -n +2)" ] \
+    || fail "the same-site restore did not bring the row back"
+ok "backup and same-site restore"
+
+docker exec speedyspec-mysql mysql -uroot -p"$password" -e 'DROP DATABASE IF EXISTS e2e_moved; CREATE DATABASE e2e_moved' 2>/dev/null \
+    || fail "could not create the second e2e database"
+cli app install wordpress --driver zip --base "$work/moved" --name moved \
+    --db-name e2e_moved --db-user root --db-password "$password" --db-host "127.0.0.1:$port" --table-prefix site_ \
+    || fail "second install"
+cli app restore "$archive" --install moved --url http://new.e2e.test || fail "restore to another URL and prefix"
+moved="$(cli app db query --install moved "SELECT option_value FROM site_options WHERE option_name = 'siteurl'")"
+case "$moved" in *http://new.e2e.test*) ;; *) fail "the moved site's URL is: $moved" ;; esac
+[ -n "$(cli app db query --install moved "SELECT option_name FROM site_options WHERE option_name = 'site_user_roles'" | tail -n +2)" ] \
+    || fail "the prefixed option was not renamed"
+ok "restore to another URL and prefix"
 
 echo "all passed; the site was at $work/site (removed on exit): point php-fpm at a copy to finish in the browser"
