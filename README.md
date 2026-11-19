@@ -5,6 +5,9 @@ The [speedyspec](https://github.com/SpeedySpec/speedyspec-cli) CLI plugin for Wo
 - install WordPress (`app install wordpress`): it downloads the latest release into a directory and writes
   `wp-config.php`, with the database settings, a table prefix and fresh salts;
 - reach the install's database (`app db … --install <name>`), read from its `wp-config.php`;
+- back up and restore it (`app backup`, `app restore`), onto the same site or another URL and table prefix: the
+  backup holds everything but the caches, `wp-config.php` stays the target's own, and the `siteurl` option and the
+  prefixed option and user meta keys are moved;
 - list, install, update and delete its plugin and theme files (`plugin …` and `theme …`), with a source plugin
   such as [speedyspec/wordpress-org](https://github.com/SpeedySpec/speedyspec-cli-wordpress-org).
 

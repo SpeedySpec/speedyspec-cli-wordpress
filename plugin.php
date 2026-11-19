@@ -11,18 +11,23 @@ declare(strict_types=1);
 
 use SpeedySpec\Cli\Contracts\App;
 use SpeedySpec\Cli\Contracts\AppTask;
+use SpeedySpec\Cli\Contracts\BackupSpec;
 use SpeedySpec\Cli\Contracts\ExtensionLayout;
 use SpeedySpec\Cli\Contracts\Install;
 use SpeedySpec\Cli\Contracts\InstallOption;
 use SpeedySpec\Cli\Contracts\InstallRequest;
+use SpeedySpec\Cli\Contracts\PrefixedColumn;
 use SpeedySpec\Cli\Contracts\SetupPlan;
+use SpeedySpec\Cli\Contracts\SiteUrl;
 use SpeedySpec\Cli\Contracts\ZipSource;
 use SpeedySpec\CliWordPress\Layout;
+use SpeedySpec\CliWordPress\Version;
 use SpeedySpec\Hooks\Hook;
 
 require_once __DIR__ . '/src/ConfigFile.php';
 require_once __DIR__ . '/src/Headers.php';
 require_once __DIR__ . '/src/Layout.php';
+require_once __DIR__ . '/src/Version.php';
 
 const SPEEDYSPEC_WORDPRESS_OPTIONS = ['db-name', 'db-user', 'db-password', 'db-host', 'table-prefix'];
 
@@ -91,5 +96,28 @@ Hook::add('speedyspec_app_extensions', static function (?ExtensionLayout $layout
     return new ExtensionLayout(
         ['plugin' => 'wp-content/plugins', 'theme' => 'wp-content/themes'],
         Layout::inspect(...),
+    );
+}, 10, 2);
+
+/*
+ * What a backup of WordPress holds: the whole install except its caches, `wp-config.php` kept from the target on
+ * restore (it names the target's own database), the site URL in the `siteurl` option, and the keys built from the
+ * table prefix: the `wp_user_roles` option (only that one: other options such as `wp_page_for_privacy_policy` only
+ * start with the same letters) and every prefixed user meta key (`wp_capabilities`).
+ */
+Hook::add('speedyspec_app_backup', static function (?BackupSpec $spec, Install $install): ?BackupSpec
+{
+    if ($install->app !== 'wordpress')
+    {
+        return $spec;
+    }
+
+    return new BackupSpec(
+        ['.'],
+        ['wp-content/cache', 'wp-content/upgrade', '.maintenance'],
+        ['wp-config.php'],
+        new SiteUrl('options', 'option_name', 'siteurl', 'option_value'),
+        [new PrefixedColumn('options', 'option_name', ['user_roles']), new PrefixedColumn('usermeta', 'meta_key')],
+        $install->root === null ? null : Version::of($install->root),
     );
 }, 10, 2);
