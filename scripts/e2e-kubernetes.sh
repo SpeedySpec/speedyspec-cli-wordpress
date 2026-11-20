@@ -114,7 +114,7 @@ docker exec speedyspec-mysql mysql -uroot -p"$local_password" -e 'DROP DATABASE 
 cli app install wordpress --driver zip --base "$work/zip" --name zip \
     --db-name e2e_from_k8s --db-user root --db-password "$local_password" --db-host "127.0.0.1:$local_port" --table-prefix site_ \
     || fail "zip install"
-cli app restore "$archive" --install zip --url http://zip.e2e.test || fail "restore onto the zip install"
+cli app restore "$archive" --install zip --url http://zip.e2e.test --yes || fail "restore onto the zip install"
 [ "$(cli app db query "SELECT option_value FROM site_options WHERE option_name = 'siteurl'" --install zip | tail -n +2)" = "http://zip.e2e.test" ] \
     || fail "the zip install's URL was not moved"
 post="$(cli app db query "SELECT guid, post_content FROM site_posts WHERE ID = 1" --install zip | tail -n +2)"
