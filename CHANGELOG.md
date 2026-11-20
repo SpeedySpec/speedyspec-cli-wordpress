@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.2](https://github.com/SpeedySpec/speedyspec-cli-wordpress/compare/v0.1.1...v0.1.2) (2026-11-20)
+
+
+### Features
+
+* install and maintain WordPress on Kubernetes ([#7](https://github.com/SpeedySpec/speedyspec-cli-wordpress/issues/7)) ([24a3b8b](https://github.com/SpeedySpec/speedyspec-cli-wordpress/commit/24a3b8b0a16e961c6961dc57f697d5369211615d))
+
+
+### Build System
+
+* require contracts ^1.5 for development ([#9](https://github.com/SpeedySpec/speedyspec-cli-wordpress/issues/9)) ([07db972](https://github.com/SpeedySpec/speedyspec-cli-wordpress/commit/07db972421ef5432d9840ea5e15bb1862460343a))
+
 ## [0.1.1](https://github.com/SpeedySpec/speedyspec-cli-wordpress/compare/v0.1.0...v0.1.1) (2026-11-19)
 
 
