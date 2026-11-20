@@ -3,38 +3,48 @@
 declare(strict_types=1);
 
 /*
- * The speedyspec CLI plugin for WordPress. It offers WordPress as an app, finishes an install by writing
- * wp-config.php, says where the install's database is, and describes its plugins and themes. It never runs WordPress:
- * the site is served by the machine's own PHP, and the rest (the site title, the admin user, activating plugins) is
- * done in WordPress's own installer and admin.
+ * The speedyspec CLI plugin for WordPress. It offers WordPress as an app, on this machine (zip) or on Kubernetes
+ * (the official image, its files on a claim), finishes an install by writing wp-config.php, says where the install's
+ * database is, and describes its plugins and themes. It never runs WordPress: the site is served by the machine's own
+ * PHP or the image's, and the rest (the site title, the admin user, activating plugins) is done in WordPress's own
+ * installer and admin.
  */
 
 use SpeedySpec\Cli\Contracts\App;
+use SpeedySpec\Cli\Contracts\AppRuntime;
 use SpeedySpec\Cli\Contracts\AppTask;
 use SpeedySpec\Cli\Contracts\BackupSpec;
 use SpeedySpec\Cli\Contracts\ExtensionLayout;
 use SpeedySpec\Cli\Contracts\Install;
 use SpeedySpec\Cli\Contracts\InstallOption;
 use SpeedySpec\Cli\Contracts\InstallRequest;
+use SpeedySpec\Cli\Contracts\KubernetesResources;
+use SpeedySpec\Cli\Contracts\MaintenanceFile;
 use SpeedySpec\Cli\Contracts\PrefixedColumn;
 use SpeedySpec\Cli\Contracts\SetupPlan;
 use SpeedySpec\Cli\Contracts\SiteUrl;
 use SpeedySpec\Cli\Contracts\TableColumn;
+use SpeedySpec\Cli\Contracts\WaitFor;
+use SpeedySpec\Cli\Contracts\Workload;
 use SpeedySpec\Cli\Contracts\ZipSource;
+use SpeedySpec\CliWordPress\Kubernetes;
 use SpeedySpec\CliWordPress\Layout;
+use SpeedySpec\CliWordPress\Maintenance;
 use SpeedySpec\CliWordPress\Version;
 use SpeedySpec\Hooks\Hook;
 
 require_once __DIR__ . '/src/ConfigFile.php';
 require_once __DIR__ . '/src/Headers.php';
+require_once __DIR__ . '/src/Kubernetes.php';
 require_once __DIR__ . '/src/Layout.php';
+require_once __DIR__ . '/src/Maintenance.php';
 require_once __DIR__ . '/src/Version.php';
 
 const SPEEDYSPEC_WORDPRESS_OPTIONS = ['db-name', 'db-user', 'db-password', 'db-host', 'table-prefix'];
 
 Hook::add('speedyspec_apps', static function (array $apps): array
 {
-    $apps[] = new App('wordpress', 'WordPress', [], ['zip']);
+    $apps[] = new App('wordpress', 'WordPress', [], ['zip', 'kubernetes']);
 
     return $apps;
 });
@@ -64,6 +74,37 @@ Hook::add('speedyspec_driver_zip', static function (array $sources, InstallReque
     $sources[] = new ZipSource($downloads . '/latest.zip', '.', stripComponents: 1);
 
     return $sources;
+}, 10, 2);
+
+Hook::add('speedyspec_driver_kubernetes', static function (mixed $given, InstallRequest $request): mixed
+{
+    if ($request->app !== 'wordpress')
+    {
+        return $given;
+    }
+    $name = $request->settings['name'];
+
+    return new KubernetesResources(Kubernetes::resources($name), [new WaitFor('Deployment', $name)]);
+}, 10, 2);
+
+/*
+ * How the CLI reaches the install: on Kubernetes, beside the image's container, whose files are at /var/www/html. On
+ * both drivers WordPress shows its maintenance page while the CLI swaps plugins, themes or a restored copy.
+ */
+Hook::add('speedyspec_app_runtime', static function (?AppRuntime $runtime, Install $install): ?AppRuntime
+{
+    if ($install->app !== 'wordpress')
+    {
+        return $runtime;
+    }
+    $workload = $install->driver === 'kubernetes'
+        ? new Workload('Deployment', $install->name, Kubernetes::ROOT, Kubernetes::CONTAINER)
+        : null;
+
+    return new AppRuntime(
+        workload: $workload,
+        maintenance: new MaintenanceFile('.maintenance', Maintenance::contents()),
+    );
 }, 10, 2);
 
 Hook::add('speedyspec_app_setup', static function (?SetupPlan $plan, Install $install, InstallRequest $request): ?SetupPlan
