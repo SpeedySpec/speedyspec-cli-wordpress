@@ -29,6 +29,7 @@ use SpeedySpec\Cli\Contracts\Workload;
 use SpeedySpec\Cli\Contracts\ZipSource;
 use SpeedySpec\CliWordPress\Kubernetes;
 use SpeedySpec\CliWordPress\Layout;
+use SpeedySpec\CliWordPress\Maintenance;
 use SpeedySpec\CliWordPress\Version;
 use SpeedySpec\Hooks\Hook;
 
@@ -36,6 +37,7 @@ require_once __DIR__ . '/src/ConfigFile.php';
 require_once __DIR__ . '/src/Headers.php';
 require_once __DIR__ . '/src/Kubernetes.php';
 require_once __DIR__ . '/src/Layout.php';
+require_once __DIR__ . '/src/Maintenance.php';
 require_once __DIR__ . '/src/Version.php';
 
 const SPEEDYSPEC_WORDPRESS_OPTIONS = ['db-name', 'db-user', 'db-password', 'db-host', 'table-prefix'];
@@ -101,7 +103,7 @@ Hook::add('speedyspec_app_runtime', static function (?AppRuntime $runtime, Insta
 
     return new AppRuntime(
         workload: $workload,
-        maintenance: new MaintenanceFile('.maintenance', '<?php $upgrading = time();'),
+        maintenance: new MaintenanceFile('.maintenance', Maintenance::contents()),
     );
 }, 10, 2);
 
